@@ -142,7 +142,7 @@ void loop() {
   }
 
   // Goalkeeper logic
-  goalkeeper.update(display.width(), gameState.totalAttempts);
+  goalkeeper.update(display.width(), gameState.totalAttempts, gameState.currentState == State::PLAY);
 
   // State Machine
   if (gameState.currentState == State::START) {
