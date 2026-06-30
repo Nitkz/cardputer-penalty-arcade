@@ -7,12 +7,12 @@
 
 class Renderer {
 private:
-  LGFX_Sprite* sprite;
+  M5Canvas* sprite;
   int screenWidth;
   int screenHeight;
 
 public:
-  Renderer(LGFX_Sprite* s, int width, int height) : sprite(s), screenWidth(width), screenHeight(height) {}
+  Renderer(M5Canvas* s, int width, int height) : sprite(s), screenWidth(width), screenHeight(height) {}
 
   void draw(const GameState& state, const Goalkeeper& gk) {
     // Fill background (Grass green)
@@ -26,11 +26,20 @@ public:
     sprite->drawLine(2 * screenWidth / 3, 0, 2 * screenWidth / 3, screenHeight, sprite->color565(0, 100, 0));
 
     // Draw Goalkeeper
-    sprite->fillRect(gk.x - gk.width / 2, gk.y - gk.height / 2, gk.width, gk.height, TFT_RED);
+    sprite->fillCircle(gk.x, gk.y - gk.height / 2 + 3, 5, TFT_RED);
+    sprite->fillRect(gk.x - 3, gk.y - gk.height / 2 + 8, 6, 8, TFT_BLUE);
+    sprite->drawLine(gk.x - 3, gk.y - gk.height / 2 + 8, gk.x - 10, gk.y - gk.height / 2 + 12, TFT_RED);
+    sprite->drawLine(gk.x + 3, gk.y - gk.height / 2 + 8, gk.x + 10, gk.y - gk.height / 2 + 12, TFT_RED);
+    sprite->drawLine(gk.x - 2, gk.y - gk.height / 2 + 16, gk.x - 5, gk.y + gk.height / 2, TFT_RED);
+    sprite->drawLine(gk.x + 2, gk.y - gk.height / 2 + 16, gk.x + 5, gk.y + gk.height / 2, TFT_RED);
 
     // Draw Ball
     sprite->fillCircle(state.ballX, state.ballY, state.ballRadius, TFT_WHITE);
     sprite->drawCircle(state.ballX, state.ballY, state.ballRadius, TFT_BLACK);
+    sprite->fillCircle(state.ballX, state.ballY, state.ballRadius / 2, TFT_BLACK);
+    sprite->drawLine(state.ballX, state.ballY - state.ballRadius / 2, state.ballX, state.ballY - state.ballRadius, TFT_BLACK);
+    sprite->drawLine(state.ballX - state.ballRadius / 2 + 1, state.ballY + state.ballRadius / 2 - 1, state.ballX - state.ballRadius + 1, state.ballY + state.ballRadius - 1, TFT_BLACK);
+    sprite->drawLine(state.ballX + state.ballRadius / 2 - 1, state.ballY + state.ballRadius / 2 - 1, state.ballX + state.ballRadius - 1, state.ballY + state.ballRadius - 1, TFT_BLACK);
 
     // Draw Text Overlays
     sprite->setTextDatum(middle_center);
