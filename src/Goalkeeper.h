@@ -16,6 +16,15 @@ public:
   float diveSpeed = 0;
   bool wasPlaying = false;
 
+  // Adaptive AI: Track player's habits (Left, Center, Right)
+  int playerHabits[3] = {1, 1, 1}; // Start with 1 to give equal chance initially
+
+  void registerPlayerShot(int lane) {
+    if (lane >= 0 && lane <= 2) {
+      playerHabits[lane]++;
+    }
+  }
+
   void increaseSpeed() {
     speedMultiplier *= 1.15f;
   }
@@ -66,18 +75,17 @@ public:
           }
         }
 
-        // Randomly stay or dive (50% chance)
-        bool stay = random(2) == 0;
-
-        int targetLane = currentLane;
-        if (!stay) {
-          if (currentLane == 0) {
-            targetLane = (random(2) == 0) ? 1 : 2;
-          } else if (currentLane == 2) {
-            targetLane = (random(2) == 0) ? 0 : 1;
-          } else {
-            targetLane = (random(2) == 0) ? 0 : 2;
-          }
+        // Adaptive AI: Dive based on player's historical shot distribution
+        int totalShots = playerHabits[0] + playerHabits[1] + playerHabits[2];
+        int r = random(totalShots);
+        int targetLane = 0;
+        
+        if (r < playerHabits[0]) {
+          targetLane = 0;
+        } else if (r < playerHabits[0] + playerHabits[1]) {
+          targetLane = 1;
+        } else {
+          targetLane = 2;
         }
 
         targetX = lanes[targetLane];

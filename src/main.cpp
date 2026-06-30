@@ -164,19 +164,24 @@ void loop() {
   if (gameState.currentState == State::START) {
     if (isTouched) {
       int targetX;
+      int laneIndex = 0;
       // Determine 3-lane zone
       if (touchX < display.width() / 3) {
         targetX = display.width() / 6.0; // Left zone
+        laneIndex = 0;
       } else if (touchX < 2 * display.width() / 3) {
         targetX = display.width() / 2.0; // Center zone
+        laneIndex = 1;
       } else {
         targetX = 5 * display.width() / 6.0; // Right zone
+        laneIndex = 2;
       }
 
       float dx = targetX - gameState.ballX;
       float dy = gameState.ballTargetY - gameState.ballY;
       float dist = sqrt(dx * dx + dy * dy);
 
+      goalkeeper.registerPlayerShot(laneIndex);
       gameState.shoot(targetX, dx, dy, dist);
       sound.playShootSound();
     }
