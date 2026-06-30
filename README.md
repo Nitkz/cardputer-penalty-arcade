@@ -1,0 +1,1 @@
+A 8-bit retro football penalty shootout arcade game developed for the M5Stack Cardputer (ESP32-S3). Built with C++, Arduino framework, and PlatformIO. Players use the built-in mini keyboard to control the ball direction and beat the moving goalkeeper.
