@@ -26,7 +26,7 @@ public:
 
   void update(int screenWidth, int totalAttempts, bool isPlaying) {
     // Optionally scale speed slightly based on total attempts
-    float currentSpeed = speed + (totalAttempts * 0.2f);
+    float currentSpeed = (baseSpeed * speedMultiplier) + (totalAttempts * 0.2f);
     if (currentSpeed > 10.0f) currentSpeed = 10.0f; // Cap speed
 
     if (!isPlaying) {
