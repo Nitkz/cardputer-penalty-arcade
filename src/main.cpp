@@ -73,7 +73,7 @@ public:
 
 Custom_ST7789 display;
 SPIClass mySPI(FSPI);
-LGFX_Sprite sprite(&display);
+M5Canvas sprite(&display);
 
 GameState gameState;
 Goalkeeper goalkeeper;
