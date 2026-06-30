@@ -20,6 +20,11 @@ public:
     speedMultiplier *= 1.15f;
   }
 
+  void decreaseSpeed() {
+    speedMultiplier *= 0.8f;
+    if (speedMultiplier < 1.0f) speedMultiplier = 1.0f;
+  }
+
   void resetSpeed() {
     speedMultiplier = 1.0f;
   }
@@ -67,9 +72,9 @@ public:
         int targetLane = currentLane;
         if (!stay) {
           if (currentLane == 0) {
-            targetLane = 1;
+            targetLane = (random(2) == 0) ? 1 : 2;
           } else if (currentLane == 2) {
-            targetLane = 1;
+            targetLane = (random(2) == 0) ? 0 : 1;
           } else {
             targetLane = (random(2) == 0) ? 0 : 2;
           }
@@ -77,7 +82,10 @@ public:
 
         targetX = lanes[targetLane];
         diveSpeed = currentSpeed * 1.5f;
-        if (diveSpeed > 10.0f) diveSpeed = 10.0f;
+        if (abs(targetLane - currentLane) == 2) {
+          diveSpeed = currentSpeed * 2.5f;
+        }
+        if (diveSpeed > 12.0f) diveSpeed = 12.0f; // Slightly higher cap for long dives
 
         if (targetX > x) {
           direction = 1;

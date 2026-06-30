@@ -60,7 +60,7 @@ public:
       cfg.dummy_read_pixel = 8;
       cfg.dummy_read_bits  = 1;
       cfg.readable         = true;
-      cfg.invert           = true;
+      cfg.invert           = false;
       cfg.rgb_order        = false;
       cfg.dlen_16bit       = false;
       cfg.bus_shared       = true; // Share the bus
@@ -74,6 +74,7 @@ public:
 Custom_ST7789 display;
 SPIClass mySPI(FSPI);
 M5Canvas sprite(&display);
+M5Canvas internalSprite(&M5.Display);
 
 GameState gameState;
 Goalkeeper goalkeeper;
@@ -92,6 +93,10 @@ uint16_t xpt2046_read_data(uint8_t command) {
   return val >> 3; // 12-bit ADC value
 }
 
+int lastScore = -1;
+int lastLives = -1;
+int lastHighScore = -1;
+
 void setup() {
   Serial.begin(115200);
 
@@ -108,10 +113,13 @@ void setup() {
   mySPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
 
   display.init();
-  display.setRotation(2); // Portrait, flipped 180 degrees
+  display.setRotation(2); // Match orientation
   display.fillScreen(TFT_BLACK);
   
   sprite.createSprite(display.width(), display.height());
+  
+  M5.Display.setRotation(1); // Ensure Cardputer display is landscape
+  internalSprite.createSprite(M5.Display.width(), M5.Display.height());
 
   renderer = new Renderer(&sprite, display.width(), display.height());
 
@@ -125,6 +133,8 @@ void setup() {
 
 void loop() {
   M5.update(); // Keeps M5Unified background tasks (like sound fading) happy
+  
+  display.waitDisplay(); // Wait for external display DMA to finish before using SPI for touch
 
   // Read touch pressure (Z)
   uint16_t z1 = xpt2046_read_data(0xB1);
@@ -174,6 +184,13 @@ void loop() {
     gameState.ballX += gameState.ballSpeedX;
     gameState.ballY += gameState.ballSpeedY;
 
+    // Shrink ball to simulate 3D depth
+    float startY = display.height() - 40.0;
+    float progress = (startY - gameState.ballY) / (startY - gameState.ballTargetY);
+    if (progress < 0) progress = 0;
+    if (progress > 1) progress = 1;
+    gameState.ballRadius = gameState.ballBaseRadius * (1.0f - progress * 0.5f);
+
     // Check collision at goal line
     if (gameState.ballY <= goalkeeper.y + goalkeeper.height / 2 + gameState.ballRadius) {
       gameState.ballY = goalkeeper.y + goalkeeper.height / 2 + gameState.ballRadius; // Snap to line
@@ -181,12 +198,15 @@ void loop() {
       if (goalkeeper.checkCollision(gameState.ballX, gameState.ballRadius)) {
         gameState.currentState = State::SAVED;
         gameState.scoreSaves++;
-        goalkeeper.resetSpeed();
+        gameState.lives--; // Deduct life
+        goalkeeper.decreaseSpeed();
         sound.playSavedSound();
       } else {
         gameState.currentState = State::GOAL;
         gameState.scoreGoals++;
         goalkeeper.increaseSpeed();
+        gameState.currentBallSpeed += 0.5f;
+        if (gameState.currentBallSpeed > 20.0f) gameState.currentBallSpeed = 20.0f;
         sound.playGoalSound();
 
         // Update high score if beaten
@@ -212,6 +232,41 @@ void loop() {
 
   // Render Frame
   renderer->draw(gameState, goalkeeper);
+
+  // Render to Internal Display ONLY when stats change to prevent display/SPI bottlenecks
+  if (gameState.scoreGoals != lastScore || gameState.lives != lastLives || gameState.highScoreGoals != lastHighScore) {
+    lastScore = gameState.scoreGoals;
+    lastLives = gameState.lives;
+    lastHighScore = gameState.highScoreGoals;
+
+    internalSprite.fillScreen(TFT_BLACK);
+    internalSprite.setFont(&fonts::Orbitron_Light_24);
+    internalSprite.setTextColor(TFT_WHITE);
+    internalSprite.setTextDatum(top_center);
+    internalSprite.drawString("PENALTY ARCADE", internalSprite.width() / 2, 10);
+
+    internalSprite.setFont(&fonts::Roboto_Thin_24);
+    internalSprite.setTextDatum(middle_left);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "Score: %d", gameState.scoreGoals);
+    internalSprite.drawString(buf, 10, internalSprite.height() / 2);
+
+    internalSprite.setTextDatum(middle_right);
+    if (gameState.lives > 0) {
+      internalSprite.setTextColor(TFT_GREEN);
+    } else {
+      internalSprite.setTextColor(TFT_RED);
+    }
+    snprintf(buf, sizeof(buf), "Lives: %d", gameState.lives);
+    internalSprite.drawString(buf, internalSprite.width() - 10, internalSprite.height() / 2);
+
+    internalSprite.setTextDatum(bottom_center);
+    internalSprite.setTextColor(TFT_YELLOW);
+    snprintf(buf, sizeof(buf), "High Score: %d", gameState.highScoreGoals);
+    internalSprite.drawString(buf, internalSprite.width() / 2, internalSprite.height() - 10);
+
+    internalSprite.pushSprite(0, 0);
+  }
 
   // Keep a steady frame rate roughly
   delay(20);
