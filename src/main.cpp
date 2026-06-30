@@ -1,7 +1,13 @@
 #include <Arduino.h>
+#include <M5Unified.h>
+#include <SPI.h>
 #include <M5GFX.h>
 #include <lgfx/v1/panel/Panel_ST7789.hpp>
-#include <SPI.h>
+
+#include "GameState.h"
+#include "Goalkeeper.h"
+#include "SoundEffects.h"
+#include "Renderer.h"
 
 // ST7789 Pin mapping
 #define TFT_CS    5
@@ -65,12 +71,13 @@ public:
 };
 
 Custom_ST7789 display;
-
-// Standard SPI bus used by Touch
 SPIClass mySPI(FSPI);
-
-// Sprite to reduce flickering during drag
 LGFX_Sprite sprite(&display);
+
+GameState gameState;
+Goalkeeper goalkeeper;
+SoundEffects sound;
+Renderer* renderer;
 
 // Raw SPI read function for XPT2046
 uint16_t xpt2046_read_data(uint8_t command) {
@@ -83,40 +90,14 @@ uint16_t xpt2046_read_data(uint8_t command) {
   return val >> 3; // 12-bit ADC value
 }
 
-// Game States
-enum GameState {
-  WAITING,
-  SHOOTING,
-  RESULT
-};
-
-GameState gameState = WAITING;
-
-// Goalkeeper variables
-float gkX = 120.0;
-const int gkY = 30;
-const int gkWidth = 70;
-const int gkHeight = 15;
-float gkSpeed = 4.0;
-int gkDirection = 1;
-
-// Ball variables
-float ballX = 120.0;
-float ballY = 280.0;
-const int ballRadius = 8;
-float ballTargetX = 120.0;
-const int ballTargetY = 30;
-float ballSpeedX = 0;
-float ballSpeedY = 0;
-
-// Score variables
-int scoreGoals = 0;
-int scoreSaves = 0;
-unsigned long resultTime = 0;
-String resultMessage = "";
-
 void setup() {
   Serial.begin(115200);
+
+  // Initialize M5Unified (includes Speaker support)
+  auto cfg = M5.config();
+  M5.begin(cfg);
+
+  sound.begin();
   
   pinMode(TOUCH_CS, OUTPUT);
   digitalWrite(TOUCH_CS, HIGH);
@@ -128,18 +109,17 @@ void setup() {
   display.setRotation(2); // Portrait, flipped 180 degrees
   display.fillScreen(TFT_BLACK);
   
-  // Create a sprite the size of the screen
   sprite.createSprite(display.width(), display.height());
-  sprite.setTextDatum(middle_center);
-}
 
-void resetBall() {
-  ballX = display.width() / 2;
-  ballY = display.height() - 40;
-  gameState = WAITING;
+  renderer = new Renderer(&sprite, display.width(), display.height());
+
+  // Set initial game state positions
+  gameState.resetBall(display.width(), display.height());
 }
 
 void loop() {
+  M5.update(); // Keeps M5Unified background tasks (like sound fading) happy
+
   // Read touch pressure (Z)
   uint16_t z1 = xpt2046_read_data(0xB1);
   uint16_t z2 = xpt2046_read_data(0xC1);
@@ -151,110 +131,67 @@ void loop() {
   int touchY = -1;
 
   if (isTouched) {
-    // Read X and Y
     uint16_t rawX = xpt2046_read_data(0xD1);
     uint16_t rawY = xpt2046_read_data(0x91);
 
     touchX = map(rawX, 300, 3800, 0, display.width());
     touchY = map(rawY, 300, 3800, display.height(), 0); // Inverted Y for rotation 2
     
-    // Constrain to screen bounds
     touchX = constrain(touchX, 0, display.width());
     touchY = constrain(touchY, 0, display.height());
   }
 
   // Goalkeeper logic
-  gkX += gkSpeed * gkDirection;
-  if (gkX - gkWidth / 2 < 0) {
-    gkX = gkWidth / 2;
-    gkDirection = 1;
-  } else if (gkX + gkWidth / 2 > display.width()) {
-    gkX = display.width() - gkWidth / 2;
-    gkDirection = -1;
-  }
+  goalkeeper.update(display.width(), gameState.totalAttempts);
 
-  if (gameState == WAITING) {
+  // State Machine
+  if (gameState.currentState == State::START) {
     if (isTouched) {
-      // Determine zone
+      int targetX;
+      // Determine 3-lane zone
       if (touchX < display.width() / 3) {
-        ballTargetX = display.width() / 6.0; // Left zone center
+        targetX = display.width() / 6.0; // Left zone
       } else if (touchX < 2 * display.width() / 3) {
-        ballTargetX = display.width() / 2.0; // Center zone center
+        targetX = display.width() / 2.0; // Center zone
       } else {
-        ballTargetX = 5 * display.width() / 6.0; // Right zone center
+        targetX = 5 * display.width() / 6.0; // Right zone
       }
 
-      // Calculate speed vectors
-      float dx = ballTargetX - ballX;
-      float dy = ballTargetY - ballY;
+      float dx = targetX - gameState.ballX;
+      float dy = gameState.ballTargetY - gameState.ballY;
       float dist = sqrt(dx * dx + dy * dy);
-      float speed = 10.0; // Ball speed
-      ballSpeedX = (dx / dist) * speed;
-      ballSpeedY = (dy / dist) * speed;
 
-      gameState = SHOOTING;
+      gameState.shoot(targetX, dx, dy, dist);
+      sound.playShootSound();
     }
-  } else if (gameState == SHOOTING) {
-    ballX += ballSpeedX;
-    ballY += ballSpeedY;
+  } else if (gameState.currentState == State::PLAY) {
+    gameState.ballX += gameState.ballSpeedX;
+    gameState.ballY += gameState.ballSpeedY;
 
     // Check collision at goal line
-    if (ballY <= gkY + gkHeight / 2 + ballRadius) {
-      ballY = gkY + gkHeight / 2 + ballRadius; // Snap to line
+    if (gameState.ballY <= goalkeeper.y + goalkeeper.height / 2 + gameState.ballRadius) {
+      gameState.ballY = goalkeeper.y + goalkeeper.height / 2 + gameState.ballRadius; // Snap to line
 
-      // Check if ball overlaps goalkeeper
-      if (ballX + ballRadius > gkX - gkWidth / 2 && ballX - ballRadius < gkX + gkWidth / 2) {
-        resultMessage = "SAVED!";
-        scoreSaves++;
+      if (goalkeeper.checkCollision(gameState.ballX, gameState.ballRadius)) {
+        gameState.currentState = State::SAVED;
+        gameState.scoreSaves++;
+        sound.playSavedSound();
       } else {
-        resultMessage = "GOAL!";
-        scoreGoals++;
+        gameState.currentState = State::GOAL;
+        gameState.scoreGoals++;
+        sound.playGoalSound();
       }
-      resultTime = millis();
-      gameState = RESULT;
+      gameState.resultTime = millis();
     }
-  } else if (gameState == RESULT) {
-    if (millis() - resultTime > 2000) {
-      resetBall();
+  } else if (gameState.currentState == State::GOAL || gameState.currentState == State::SAVED) {
+    if (millis() - gameState.resultTime > 2000) {
+      gameState.resetBall(display.width(), display.height());
     }
   }
 
-  // Draw everything to the sprite first
-  sprite.fillScreen(display.color565(34, 139, 34)); // Grass green
+  // Render Frame
+  renderer->draw(gameState, goalkeeper);
 
-  // Draw Goal area lines
-  sprite.drawLine(0, gkY, display.width(), gkY, TFT_WHITE);
-
-  // Draw touch zones (subtle lines)
-  sprite.drawLine(display.width() / 3, 0, display.width() / 3, display.height(), display.color565(0, 100, 0));
-  sprite.drawLine(2 * display.width() / 3, 0, 2 * display.width() / 3, display.height(), display.color565(0, 100, 0));
-
-  // Draw Goalkeeper
-  sprite.fillRect(gkX - gkWidth / 2, gkY - gkHeight / 2, gkWidth, gkHeight, TFT_RED);
-
-  // Draw Ball
-  sprite.fillCircle(ballX, ballY, ballRadius, TFT_WHITE);
-  sprite.drawCircle(ballX, ballY, ballRadius, TFT_BLACK);
-
-  // Draw Result text
-  if (gameState == RESULT) {
-    sprite.setFont(&fonts::Orbitron_Light_32);
-    sprite.setTextColor(TFT_YELLOW);
-    sprite.drawString(resultMessage, display.width() / 2, display.height() / 2);
-  } else if (gameState == WAITING) {
-    sprite.setFont(&fonts::Roboto_Thin_24);
-    sprite.setTextColor(TFT_WHITE);
-    sprite.drawString("TAP TO SHOOT", display.width() / 2, display.height() / 2);
-  }
-
-  // Draw Score
-  sprite.setFont(&fonts::Roboto_Thin_24);
-  sprite.setTextColor(TFT_WHITE);
-  sprite.drawString("Goals: " + String(scoreGoals), 50, display.height() - 20);
-  sprite.drawString("Saves: " + String(scoreSaves), display.width() - 50, display.height() - 20);
-
-  // Push the sprite to the physical screen
-  sprite.pushSprite(0, 0);
-
+  // Keep a steady frame rate roughly
   delay(20);
 }
