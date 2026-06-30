@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <M5GFX.h>
 #include <lgfx/v1/panel/Panel_ST7789.hpp>
+#include <Preferences.h>
 
 #include "GameState.h"
 #include "Goalkeeper.h"
@@ -72,12 +73,13 @@ public:
 
 Custom_ST7789 display;
 SPIClass mySPI(FSPI);
-LGFX_Sprite sprite(&display);
+M5Canvas sprite(&display);
 
 GameState gameState;
 Goalkeeper goalkeeper;
 SoundEffects sound;
 Renderer* renderer;
+Preferences preferences;
 
 // Raw SPI read function for XPT2046
 uint16_t xpt2046_read_data(uint8_t command) {
@@ -112,6 +114,10 @@ void setup() {
   sprite.createSprite(display.width(), display.height());
 
   renderer = new Renderer(&sprite, display.width(), display.height());
+
+  // Load high score
+  preferences.begin("penalty-game", false);
+  gameState.highScoreGoals = preferences.getInt("highscore", 0);
 
   // Set initial game state positions
   gameState.resetBall(display.width(), display.height());
@@ -175,17 +181,32 @@ void loop() {
       if (goalkeeper.checkCollision(gameState.ballX, gameState.ballRadius)) {
         gameState.currentState = State::SAVED;
         gameState.scoreSaves++;
+        goalkeeper.resetSpeed();
         sound.playSavedSound();
       } else {
         gameState.currentState = State::GOAL;
         gameState.scoreGoals++;
+        goalkeeper.increaseSpeed();
         sound.playGoalSound();
+
+        // Update high score if beaten
+        if (gameState.scoreGoals > gameState.highScoreGoals) {
+          gameState.highScoreGoals = gameState.scoreGoals;
+          preferences.putInt("highscore", gameState.highScoreGoals);
+        }
       }
       gameState.resultTime = millis();
     }
   } else if (gameState.currentState == State::GOAL || gameState.currentState == State::SAVED) {
     if (millis() - gameState.resultTime > 2000) {
       gameState.resetBall(display.width(), display.height());
+    }
+  } else if (gameState.currentState == State::GAMEOVER) {
+    if (isTouched) {
+      gameState.restartGame(display.width(), display.height());
+      goalkeeper.resetSpeed();
+      sound.playShootSound(); // Provide audio feedback for restart
+      delay(200); // debounce touch
     }
   }
 

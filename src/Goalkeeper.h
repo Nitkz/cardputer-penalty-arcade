@@ -7,13 +7,22 @@ public:
   const int y = 30;
   const int width = 70;
   const int height = 15;
-  float speed = 4.0;
+  float baseSpeed = 4.0;
+  float speedMultiplier = 1.0;
   int direction = 1;
 
   bool isDiving = false;
   float targetX = 0;
   float diveSpeed = 0;
   bool wasPlaying = false;
+
+  void increaseSpeed() {
+    speedMultiplier *= 1.15f;
+  }
+
+  void resetSpeed() {
+    speedMultiplier = 1.0f;
+  }
 
   void update(int screenWidth, int totalAttempts, bool isPlaying) {
     // Optionally scale speed slightly based on total attempts
