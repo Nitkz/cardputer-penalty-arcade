@@ -7,13 +7,21 @@ public:
   const int y = 30;
   const int width = 70;
   const int height = 15;
-  float speed = 4.0;
+  float baseSpeed = 4.0;
+  float speedMultiplier = 1.0;
   int direction = 1;
 
-  void update(int screenWidth, int totalAttempts) {
-    // Optionally scale speed slightly based on total attempts
-    float currentSpeed = speed + (totalAttempts * 0.2f);
-    if (currentSpeed > 10.0f) currentSpeed = 10.0f; // Cap speed
+  void increaseSpeed() {
+    speedMultiplier *= 1.15f;
+  }
+
+  void resetSpeed() {
+    speedMultiplier = 1.0f;
+  }
+
+  void update(int screenWidth) {
+    float currentSpeed = baseSpeed * speedMultiplier;
+    if (currentSpeed > 15.0f) currentSpeed = 15.0f; // Cap max speed
 
     x += currentSpeed * direction;
     if (x - width / 2 < 0) {

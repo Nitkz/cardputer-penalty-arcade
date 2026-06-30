@@ -34,32 +34,65 @@ public:
 
     // Draw Text Overlays
     sprite->setTextDatum(middle_center);
-    if (state.currentState == State::GOAL) {
+    if (state.currentState == State::GAMEOVER) {
       sprite->setFont(&fonts::Orbitron_Light_32);
-      sprite->setTextColor(TFT_YELLOW);
-      sprite->drawString("GOAL!", screenWidth / 2, screenHeight / 2);
-    } else if (state.currentState == State::SAVED) {
-      sprite->setFont(&fonts::Orbitron_Light_32);
-      sprite->setTextColor(TFT_YELLOW);
-      sprite->drawString("SAVED!", screenWidth / 2, screenHeight / 2);
-    } else if (state.currentState == State::START) {
+      sprite->setTextColor(TFT_RED);
+      sprite->drawString("GAME OVER", screenWidth / 2, screenHeight / 2 - 40);
+
       sprite->setFont(&fonts::Roboto_Thin_24);
       sprite->setTextColor(TFT_WHITE);
-      sprite->drawString("TAP TO SHOOT", screenWidth / 2, screenHeight / 2);
+      char buf[32];
+      snprintf(buf, sizeof(buf), "Score: %d", state.scoreGoals);
+      sprite->drawString(buf, screenWidth / 2, screenHeight / 2);
+
+      snprintf(buf, sizeof(buf), "High Score: %d", state.highScoreGoals);
+      sprite->setTextColor(TFT_YELLOW);
+      sprite->drawString(buf, screenWidth / 2, screenHeight / 2 + 30);
+
+      sprite->setTextColor(TFT_WHITE);
+      sprite->drawString("TAP TO RESTART", screenWidth / 2, screenHeight - 40);
+
+    } else {
+      if (state.currentState == State::GOAL) {
+        sprite->setFont(&fonts::Orbitron_Light_32);
+        sprite->setTextColor(TFT_YELLOW);
+        sprite->drawString("GOAL!", screenWidth / 2, screenHeight / 2);
+      } else if (state.currentState == State::SAVED) {
+        sprite->setFont(&fonts::Orbitron_Light_32);
+        sprite->setTextColor(TFT_YELLOW);
+        sprite->drawString("SAVED!", screenWidth / 2, screenHeight / 2);
+      } else if (state.currentState == State::START) {
+        sprite->setFont(&fonts::Roboto_Thin_24);
+        sprite->setTextColor(TFT_WHITE);
+        sprite->drawString("TAP TO SHOOT", screenWidth / 2, screenHeight / 2);
+      }
+
+      // Draw Multiplier
+      sprite->setFont(&fonts::Roboto_Thin_24);
+      sprite->setTextColor(TFT_CYAN);
+      sprite->setTextDatum(top_left);
+      char multBuf[16];
+      snprintf(multBuf, sizeof(multBuf), "x%.2f", gk.speedMultiplier);
+      sprite->drawString(multBuf, 10, 10);
+
+      // Draw High Score
+      sprite->setTextDatum(top_right);
+      char hsBuf[32];
+      snprintf(hsBuf, sizeof(hsBuf), "HS: %d", state.highScoreGoals);
+      sprite->drawString(hsBuf, screenWidth - 10, 10);
+
+      // Draw Score
+      sprite->setTextColor(TFT_WHITE);
+
+      char scoreBuf[32];
+      snprintf(scoreBuf, sizeof(scoreBuf), "Goals: %d/%d", state.scoreGoals, state.maxAttempts);
+      sprite->setTextDatum(bottom_left);
+      sprite->drawString(scoreBuf, 10, screenHeight - 10);
+
+      snprintf(scoreBuf, sizeof(scoreBuf), "Saves: %d", state.scoreSaves);
+      sprite->setTextDatum(bottom_right);
+      sprite->drawString(scoreBuf, screenWidth - 10, screenHeight - 10);
     }
-
-    // Draw Score
-    sprite->setFont(&fonts::Roboto_Thin_24);
-    sprite->setTextColor(TFT_WHITE);
-
-    char scoreBuf[32];
-    snprintf(scoreBuf, sizeof(scoreBuf), "Goals: %d", state.scoreGoals);
-    sprite->setTextDatum(bottom_left);
-    sprite->drawString(scoreBuf, 10, screenHeight - 10);
-
-    snprintf(scoreBuf, sizeof(scoreBuf), "Saves: %d", state.scoreSaves);
-    sprite->setTextDatum(bottom_right);
-    sprite->drawString(scoreBuf, screenWidth - 10, screenHeight - 10);
 
     // Push the sprite to the physical screen
     sprite->pushSprite(0, 0);
