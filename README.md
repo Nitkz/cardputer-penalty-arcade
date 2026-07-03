@@ -4,6 +4,8 @@ An 8-bit retro football penalty shootout arcade game developed for the **M5Stack
 
 ![Gameplay Preview](gameplay-preview.jpg)
 
+🎥 **[Watch the Gameplay Video here](https://youtu.be/b3nU21ZUHPo)**
+
 📖 **[View the complete LCD Wiring Guide here](https://github.com/Nitkz/m5cardputer-st7789-touch)**
 
 ## 🌟 Features
