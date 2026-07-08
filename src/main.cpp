@@ -21,6 +21,12 @@
 // Touch Pin
 #define TOUCH_CS  4
 
+// Touch Commands
+#define CMD_READ_Y  0x91
+#define CMD_READ_Z1 0xB1
+#define CMD_READ_Z2 0xC1
+#define CMD_READ_X  0xD1
+
 // Create a custom M5GFX configuration
 class Custom_ST7789 : public lgfx::LGFX_Device
 {
@@ -137,8 +143,8 @@ void loop() {
   display.waitDisplay(); // Wait for external display DMA to finish before using SPI for touch
 
   // Read touch pressure (Z)
-  uint16_t z1 = xpt2046_read_data(0xB1);
-  uint16_t z2 = xpt2046_read_data(0xC1);
+  uint16_t z1 = xpt2046_read_data(CMD_READ_Z1);
+  uint16_t z2 = xpt2046_read_data(CMD_READ_Z2);
   int z = z1 + 4095 - z2;
   
   bool isTouched = (z > 400); // Z threshold
@@ -147,8 +153,8 @@ void loop() {
   int touchY = -1;
 
   if (isTouched) {
-    uint16_t rawX = xpt2046_read_data(0xD1);
-    uint16_t rawY = xpt2046_read_data(0x91);
+    uint16_t rawX = xpt2046_read_data(CMD_READ_X);
+    uint16_t rawY = xpt2046_read_data(CMD_READ_Y);
 
     touchX = map(rawX, 300, 3800, 0, display.width());
     touchY = map(rawY, 300, 3800, display.height(), 0); // Inverted Y for rotation 2
