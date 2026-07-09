@@ -140,6 +140,12 @@ void setup() {
 void loop() {
   M5.update(); // Keeps M5Unified background tasks (like sound fading) happy
   
+  static uint32_t lastFrameTime = 0;
+  if (millis() - lastFrameTime < 20) {
+    return;
+  }
+  lastFrameTime = millis();
+
   display.waitDisplay(); // Wait for external display DMA to finish before using SPI for touch
 
   // Read touch pressure (Z)
@@ -279,6 +285,4 @@ void loop() {
     internalSprite.pushSprite(0, 0);
   }
 
-  // Keep a steady frame rate roughly
-  delay(20);
 }
