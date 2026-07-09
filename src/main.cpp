@@ -103,6 +103,9 @@ int lastScore = -1;
 int lastLives = -1;
 int lastHighScore = -1;
 
+unsigned long lastTouchTime = 0;
+const unsigned long touchDebounceDelay = 200;
+
 void setup() {
   Serial.begin(115200);
 
@@ -140,6 +143,8 @@ void setup() {
 void loop() {
   M5.update(); // Keeps M5Unified background tasks (like sound fading) happy
   
+  unsigned long currentMillis = millis();
+
   display.waitDisplay(); // Wait for external display DMA to finish before using SPI for touch
 
   // Read touch pressure (Z)
@@ -149,6 +154,14 @@ void loop() {
   
   bool isTouched = (z > 400); // Z threshold
   
+  // Debounce logic to prevent accidental rapid touches
+  if (isTouched && (currentMillis - lastTouchTime < touchDebounceDelay)) {
+    isTouched = false;
+  } else if (isTouched) {
+    // Only update lastTouchTime if it's a valid, non-debounced touch
+    lastTouchTime = currentMillis;
+  }
+
   int touchX = -1;
   int touchY = -1;
 
@@ -237,7 +250,7 @@ void loop() {
       gameState.restartGame(display.width(), display.height());
       goalkeeper.resetSpeed();
       sound.playShootSound(); // Provide audio feedback for restart
-      delay(200); // debounce touch
+      lastTouchTime = currentMillis; // Ensure debounce is active for the restart
     }
   }
 
