@@ -17,13 +17,9 @@ public:
 
   // A celebratory melody when a goal is scored
   void playGoalSound() {
-    // Non-blocking tones using tone with duration
-    // A quick arpeggio (C5, E5, G5)
+    // A quick arpeggio (C5, High C)
     M5.Speaker.tone(523, 100);
-    // Note: To keep it strictly non-blocking in a single call without tasks,
-    // we can either play a single nice tone or use a simple sequence state machine.
-    // For simplicity and avoiding blocking delay(), just one distinct celebratory tone here.
-    // In a real scenario we'd use a timer to chain tones, but M5.Speaker can handle simple tones.
+    delay(100);
     M5.Speaker.tone(1046, 300); // High C
   }
 
