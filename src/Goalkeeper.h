@@ -47,7 +47,7 @@ public:
       wasPlaying = false;
       isDiving = false;
 
-      if (direction == 0) direction = (random(2) == 0) ? 1 : -1;
+      if (direction == 0) direction = (esp_random() % 2 == 0) ? 1 : -1;
 
       x += currentSpeed * direction;
       if (x - width / 2 < 0) {
@@ -77,7 +77,7 @@ public:
 
         // Adaptive AI: Dive based on player's historical shot distribution
         int totalShots = playerHabits[0] + playerHabits[1] + playerHabits[2];
-        int r = random(totalShots);
+        int r = totalShots > 0 ? esp_random() % totalShots : 0;
         int targetLane = 0;
         
         if (r < playerHabits[0]) {
