@@ -21,17 +21,23 @@ public:
     // Draw Goal area line
     sprite->drawLine(0, gk.y, screenWidth, gk.y, TFT_WHITE);
 
+    // Calculate commonly used variables to avoid repeated arithmetic
+    int thirdWidth = screenWidth / 3;
+    int twoThirdWidth = 2 * screenWidth / 3;
+    int gkTop = gk.y - gk.height / 2;
+    int gkBottom = gk.y + gk.height / 2;
+
     // Draw touch zones (subtle lines)
-    sprite->drawLine(screenWidth / 3, 0, screenWidth / 3, screenHeight, sprite->color565(0, 100, 0));
-    sprite->drawLine(2 * screenWidth / 3, 0, 2 * screenWidth / 3, screenHeight, sprite->color565(0, 100, 0));
+    sprite->drawLine(thirdWidth, 0, thirdWidth, screenHeight, sprite->color565(0, 100, 0));
+    sprite->drawLine(twoThirdWidth, 0, twoThirdWidth, screenHeight, sprite->color565(0, 100, 0));
 
     // Draw Goalkeeper
-    sprite->fillCircle(gk.x, gk.y - gk.height / 2 + 3, 5, TFT_RED);
-    sprite->fillRect(gk.x - 3, gk.y - gk.height / 2 + 8, 6, 8, TFT_BLUE);
-    sprite->drawLine(gk.x - 3, gk.y - gk.height / 2 + 8, gk.x - 10, gk.y - gk.height / 2 + 12, TFT_RED);
-    sprite->drawLine(gk.x + 3, gk.y - gk.height / 2 + 8, gk.x + 10, gk.y - gk.height / 2 + 12, TFT_RED);
-    sprite->drawLine(gk.x - 2, gk.y - gk.height / 2 + 16, gk.x - 5, gk.y + gk.height / 2, TFT_RED);
-    sprite->drawLine(gk.x + 2, gk.y - gk.height / 2 + 16, gk.x + 5, gk.y + gk.height / 2, TFT_RED);
+    sprite->fillCircle(gk.x, gkTop + 3, 5, TFT_RED);
+    sprite->fillRect(gk.x - 3, gkTop + 8, 6, 8, TFT_BLUE);
+    sprite->drawLine(gk.x - 3, gkTop + 8, gk.x - 10, gkTop + 12, TFT_RED);
+    sprite->drawLine(gk.x + 3, gkTop + 8, gk.x + 10, gkTop + 12, TFT_RED);
+    sprite->drawLine(gk.x - 2, gkTop + 16, gk.x - 5, gkBottom, TFT_RED);
+    sprite->drawLine(gk.x + 2, gkTop + 16, gk.x + 5, gkBottom, TFT_RED);
 
     // Draw Ball
     sprite->fillCircle(state.ballX, state.ballY, state.ballRadius, TFT_WHITE);
