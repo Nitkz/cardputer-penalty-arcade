@@ -1,7 +1,9 @@
 #ifndef GAMESTATE_H
 #define GAMESTATE_H
 
+#ifdef ARDUINO
 #include <Arduino.h>
+#endif
 
 enum class State {
   START,
