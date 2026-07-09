@@ -9,6 +9,7 @@
 #include "Goalkeeper.h"
 #include "SoundEffects.h"
 #include "Renderer.h"
+#include "LaneUtils.h"
 
 // ST7789 Pin mapping
 #define TFT_CS    5
@@ -169,19 +170,8 @@ void loop() {
   // State Machine
   if (gameState.currentState == State::START) {
     if (isTouched) {
-      int targetX;
-      int laneIndex = 0;
-      // Determine 3-lane zone
-      if (touchX < display.width() / 3) {
-        targetX = display.width() / 6.0; // Left zone
-        laneIndex = 0;
-      } else if (touchX < 2 * display.width() / 3) {
-        targetX = display.width() / 2.0; // Center zone
-        laneIndex = 1;
-      } else {
-        targetX = 5 * display.width() / 6.0; // Right zone
-        laneIndex = 2;
-      }
+      int laneIndex = LaneUtils::getLaneIndexFromTouch(touchX, display.width());
+      int targetX = LaneUtils::getLaneTargetX(laneIndex, display.width());
 
       float dx = targetX - gameState.ballX;
       float dy = gameState.ballTargetY - gameState.ballY;

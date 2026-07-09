@@ -1,6 +1,8 @@
 #ifndef GOALKEEPER_H
 #define GOALKEEPER_H
 
+#include "LaneUtils.h"
+
 class Goalkeeper {
 public:
   float x = 120.0;
@@ -62,13 +64,11 @@ public:
         wasPlaying = true;
         isDiving = true;
 
-        float lanes[3] = { screenWidth / 6.0f, screenWidth / 2.0f, 5.0f * screenWidth / 6.0f };
-
         // Find closest lane
         int currentLane = 0;
-        float minDist = abs(x - lanes[0]);
+        float minDist = abs(x - LaneUtils::getLaneTargetX(0, screenWidth));
         for (int i = 1; i < 3; ++i) {
-          float dist = abs(x - lanes[i]);
+          float dist = abs(x - LaneUtils::getLaneTargetX(i, screenWidth));
           if (dist < minDist) {
             minDist = dist;
             currentLane = i;
@@ -88,7 +88,7 @@ public:
           targetLane = 2;
         }
 
-        targetX = lanes[targetLane];
+        targetX = LaneUtils::getLaneTargetX(targetLane, screenWidth);
         diveSpeed = currentSpeed * 1.5f;
         if (abs(targetLane - currentLane) == 2) {
           diveSpeed = currentSpeed * 2.5f;
