@@ -10,20 +10,25 @@ private:
   M5Canvas* sprite;
   int screenWidth;
   int screenHeight;
+  uint16_t bgColor;
+  uint16_t lineColor;
 
 public:
-  Renderer(M5Canvas* s, int width, int height) : sprite(s), screenWidth(width), screenHeight(height) {}
+  Renderer(M5Canvas* s, int width, int height) : sprite(s), screenWidth(width), screenHeight(height) {
+    bgColor = sprite->color565(19, 163, 69);
+    lineColor = sprite->color565(0, 100, 0);
+  }
 
   void draw(const GameState& state, const Goalkeeper& gk) {
     // Fill background (Grass green)
-    sprite->fillScreen(sprite->color565(19, 163, 69));
+    sprite->fillScreen(bgColor);
 
     // Draw Goal area line
     sprite->drawLine(0, gk.y, screenWidth, gk.y, TFT_WHITE);
 
     // Draw touch zones (subtle lines)
-    sprite->drawLine(screenWidth / 3, 0, screenWidth / 3, screenHeight, sprite->color565(0, 100, 0));
-    sprite->drawLine(2 * screenWidth / 3, 0, 2 * screenWidth / 3, screenHeight, sprite->color565(0, 100, 0));
+    sprite->drawLine(screenWidth / 3, 0, screenWidth / 3, screenHeight, lineColor);
+    sprite->drawLine(2 * screenWidth / 3, 0, 2 * screenWidth / 3, screenHeight, lineColor);
 
     // Draw Goalkeeper
     sprite->fillCircle(gk.x, gk.y - gk.height / 2 + 3, 5, TFT_RED);
