@@ -103,54 +103,16 @@ int lastScore = -1;
 int lastLives = -1;
 int lastHighScore = -1;
 
-void setup() {
-  Serial.begin(115200);
-
-  // Initialize M5Unified (includes Speaker support)
-  auto cfg = M5.config();
-  M5.begin(cfg);
-
-  sound.begin();
-  
-  pinMode(TOUCH_CS, OUTPUT);
-  digitalWrite(TOUCH_CS, HIGH);
-
-  // Initialize shared SPI bus
-  mySPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
-
-  display.init();
-  display.setRotation(2); // Match orientation
-  display.fillScreen(TFT_BLACK);
-  
-  sprite.createSprite(display.width(), display.height());
-  
-  M5.Display.setRotation(1); // Ensure Cardputer display is landscape
-  internalSprite.createSprite(M5.Display.width(), M5.Display.height());
-
-  renderer = new Renderer(&sprite, display.width(), display.height());
-
-  // Load high score
-  preferences.begin("penalty-game", false);
-  gameState.highScoreGoals = preferences.getInt("highscore", 0);
-
-  // Set initial game state positions
-  gameState.resetBall(display.width(), display.height());
-}
-
-void loop() {
-  M5.update(); // Keeps M5Unified background tasks (like sound fading) happy
-  
-  display.waitDisplay(); // Wait for external display DMA to finish before using SPI for touch
-
+void readTouch(bool& isTouched, int& touchX, int& touchY) {
   // Read touch pressure (Z)
   uint16_t z1 = xpt2046_read_data(CMD_READ_Z1);
   uint16_t z2 = xpt2046_read_data(CMD_READ_Z2);
   int z = z1 + 4095 - z2;
   
-  bool isTouched = (z > 400); // Z threshold
+  isTouched = (z > 400); // Z threshold
   
-  int touchX = -1;
-  int touchY = -1;
+  touchX = -1;
+  touchY = -1;
 
   if (isTouched) {
     uint16_t rawX = xpt2046_read_data(CMD_READ_X);
@@ -162,7 +124,9 @@ void loop() {
     touchX = constrain(touchX, 0, display.width());
     touchY = constrain(touchY, 0, display.height());
   }
+}
 
+void updateGameState(bool isTouched, int touchX, int touchY) {
   // Goalkeeper logic
   goalkeeper.update(display.width(), gameState.totalAttempts, gameState.currentState == State::PLAY);
 
@@ -240,11 +204,9 @@ void loop() {
       delay(200); // debounce touch
     }
   }
+}
 
-  // Render Frame
-  renderer->draw(gameState, goalkeeper);
-
-  // Render to Internal Display ONLY when stats change to prevent display/SPI bottlenecks
+void updateInternalDisplay() {
   if (gameState.scoreGoals != lastScore || gameState.lives != lastLives || gameState.highScoreGoals != lastHighScore) {
     lastScore = gameState.scoreGoals;
     lastLives = gameState.lives;
@@ -278,6 +240,60 @@ void loop() {
 
     internalSprite.pushSprite(0, 0);
   }
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  // Initialize M5Unified (includes Speaker support)
+  auto cfg = M5.config();
+  M5.begin(cfg);
+
+  sound.begin();
+
+  pinMode(TOUCH_CS, OUTPUT);
+  digitalWrite(TOUCH_CS, HIGH);
+
+  // Initialize shared SPI bus
+  mySPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
+
+  display.init();
+  display.setRotation(2); // Match orientation
+  display.fillScreen(TFT_BLACK);
+
+  sprite.createSprite(display.width(), display.height());
+
+  M5.Display.setRotation(1); // Ensure Cardputer display is landscape
+  internalSprite.createSprite(M5.Display.width(), M5.Display.height());
+
+  renderer = new Renderer(&sprite, display.width(), display.height());
+
+  // Load high score
+  preferences.begin("penalty-game", false);
+  gameState.highScoreGoals = preferences.getInt("highscore", 0);
+
+  // Set initial game state positions
+  gameState.resetBall(display.width(), display.height());
+}
+
+void loop() {
+  M5.update(); // Keeps M5Unified background tasks (like sound fading) happy
+
+  display.waitDisplay(); // Wait for external display DMA to finish before using SPI for touch
+
+  bool isTouched = false;
+  int touchX = -1;
+  int touchY = -1;
+
+  readTouch(isTouched, touchX, touchY);
+
+  updateGameState(isTouched, touchX, touchY);
+
+  // Render Frame
+  renderer->draw(gameState, goalkeeper);
+
+  // Render to Internal Display ONLY when stats change to prevent display/SPI bottlenecks
+  updateInternalDisplay();
 
   // Keep a steady frame rate roughly
   delay(20);
